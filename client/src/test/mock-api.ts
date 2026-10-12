@@ -66,3 +66,35 @@ export const noSession: MockResponse = {
   status: 401,
   body: errorBody('INVALID_REFRESH_TOKEN', 'Session is invalid or has expired'),
 };
+
+export function page<T>(items: T[], overrides: Partial<{ page: number; limit: number; total: number; totalPages: number }> = {}) {
+  return { items, page: 1, limit: 20, total: items.length, totalPages: items.length ? 1 : 0, ...overrides };
+}
+
+export function workspaceFixture(overrides: Partial<{ id: string; name: string; role: 'owner' | 'admin' | 'member' }> = {}) {
+  return {
+    id: '65f0000000000000000000aa',
+    name: 'Acme',
+    slug: 'acme-abc123',
+    description: 'Product team',
+    ownerId: testUser.id,
+    role: 'owner' as const,
+    createdAt: '2026-01-15T10:00:00.000Z',
+    updatedAt: '2026-01-15T10:00:00.000Z',
+    ...overrides,
+  };
+}
+
+export function memberFixture(
+  overrides: Partial<{ userId: string; name: string; email: string; role: 'owner' | 'admin' | 'member' }> = {},
+) {
+  return {
+    userId: testUser.id,
+    name: testUser.name,
+    email: testUser.email,
+    avatarUrl: null,
+    role: 'owner' as const,
+    joinedAt: '2026-01-15T10:00:00.000Z',
+    ...overrides,
+  };
+}

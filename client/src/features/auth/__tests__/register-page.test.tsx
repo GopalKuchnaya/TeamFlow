@@ -1,6 +1,6 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { errorBody, mockApi, noSession, sessionBody } from '@/test/mock-api';
+import { errorBody, mockApi, noSession, page, sessionBody } from '@/test/mock-api';
 import { renderApp } from '@/test/render';
 
 async function fillForm(user: ReturnType<typeof renderApp>['user'], overrides: { confirm?: string } = {}) {
@@ -46,14 +46,18 @@ describe('RegisterPage', () => {
     const { calls } = mockApi({
       'POST /auth/refresh': noSession,
       'POST /auth/register': { status: 201, body: sessionBody },
+      'GET /workspaces': { status: 200, body: page([]) },
     });
     const { user, router } = renderApp('/register');
 
     await fillForm(user);
     await user.click(screen.getByRole('button', { name: 'Create account' }));
 
-    await waitFor(() => { expect(router.state.location.pathname).toBe('/'); });
-    expect(await screen.findByRole('heading', { name: 'Welcome, Ada' })).toBeInTheDocument();
+    // A brand-new user has no workspaces, so they land on the workspace selection page.
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/workspaces');
+    });
+    expect(await screen.findByText('No workspaces yet')).toBeInTheDocument();
     expect(calls.find((call) => call.path === '/auth/register')?.body).toEqual({
       name: 'Ada Lovelace',
       email: 'ada@example.com',

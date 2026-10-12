@@ -84,7 +84,7 @@ Each backend module separates concerns as follows:
 | `*.service.ts`     | Business rules, DB access, and calls to authorization policies         |
 | `*.model.ts`       | Mongoose schema, indexes, TS document types                            |
 | `*.schemas.ts`     | Zod schemas for request body/query/params                              |
-| `*.policy.ts`      | Pure authorization decisions (role → allowed actions) _(Phase 2+)_     |
+| `*.policy.ts`      | Pure authorization decisions (role → allowed actions)                  |
 | `*.dto.ts`         | Explicit mapping from documents to response objects (no leaked fields) |
 
 Dependencies flow `routes → controller → service → model/policy`. Services never import
@@ -164,7 +164,7 @@ controllers or routes, which keeps the graph acyclic.
   `sanitizeFilter` is deliberately **not** enabled, because it also neutralises the server's
   own operator queries (`$gt` on `expiresAt`).
 
-## 6. Workspace roles and permission matrix _(enforced from Phase 2)_
+## 6. Workspace roles and permission matrix
 
 Every workspace-scoped request resolves the caller's `WorkspaceMembership` on the server.
 A client-supplied `workspaceId` is only a lookup key, never proof of access. For resources
@@ -172,6 +172,21 @@ addressed by their own id (`/projects/:id`, `/tasks/:id`), the server loads the 
 reads **its** `workspaceId`, and checks the caller's membership in that workspace. Callers
 who are not members get `404` (not `403`), so the existence of resources in other
 workspaces is not revealed. Members who lack a permission get `403 FORBIDDEN`.
+
+**Implementation (Phase 2).** Rows for workspaces, members, and invitations are enforced;
+rows for projects, tasks, comments, and notifications take effect in their phases.
+
+- `workspaces/workspace.policy.ts` holds the matrix as pure functions (`can`,
+  `canInviteWithRole`, `canChangeRole`, `canRemoveMember`). They are unit-tested row by
+  row.
+- `memberships/membership.service.ts → getMembershipOrThrow / authorize` is the single
+  access check. **Every service function** that touches workspace data starts with it.
+  Authorization therefore lives in the service layer, not in route middleware, so Socket.io
+  handlers (Phase 4) can reuse it unchanged.
+- Writes that must never touch the owner row also carry a `role: { $ne: 'owner' }` guard in
+  the update filter, so a race cannot demote or remove the owner.
+- The client mirrors the policy (`client/src/features/workspaces/permissions.ts`) only to
+  hide actions the server would reject.
 
 | Action | Owner | Admin | Member |
 | ------ | :---: | :---: | :----: |
@@ -196,7 +211,10 @@ Invariants:
 
 - A workspace always has exactly one `owner` membership; the owner cannot be removed or demoted
   without an ownership transfer.
-- Admins cannot elevate anyone to admin or owner, and cannot act on owner/admin members.
+- Admins cannot elevate anyone to admin or owner, and cannot act on owner/admin members (other
+  than leaving themselves). Admins may revoke any *pending* invitation, including an admin
+  invitation sent by the owner; revoking grants nothing, and the owner can re-invite.
+- Leaving a workspace is `DELETE /workspaces/:id/members/:yourUserId`.
 - Task assignees must be members of the task's workspace; a task's `projectId` must belong to
   the same workspace.
 
@@ -217,7 +235,20 @@ topology. The approach is:
 4. **Transactions are optional.** Where an operation truly needs atomicity across collections
    (e.g. ownership transfer, workspace cascade delete), a `withOptionalTransaction` helper uses
    a session when the server supports transactions and otherwise falls back to the
-   ordered/compensating approach. This will be implemented in Phase 2 when first needed.
+   ordered/compensating approach. Implemented in `server/src/utils/transaction.ts` (Phase 2).
+   It detects support with the `hello` command (replica-set name or `mongos`).
+
+Phase 2 operations and their fallback ordering:
+
+| Operation | Transaction? | Write order without transactions | Worst partial state |
+| --------- | ------------ | -------------------------------- | ------------------- |
+| Create workspace | optional | workspace → owner membership (workspace deleted on failure) | none (compensated) |
+| Delete workspace | optional | memberships → invitations → workspace | unreachable workspace document |
+| Transfer ownership | optional | promote target → update `ownerId` → demote previous owner | two owners (never zero) |
+| Accept invitation | no | conditional claim → membership insert (claim released on failure) | none (compensated) |
+
+`tests/integration/transactions.test.ts` runs these operations on a single-node replica set
+and verifies rollback. The rest of the suite exercises the standalone fallback.
 
 ## 8. Error handling and logging
 
@@ -256,4 +287,6 @@ topology. The approach is:
 | Socket.io horizontal scaling | Single instance initially; the Redis adapter is a documented follow-up. |
 | Access token lives in memory, so it is lost on reload | By design: the refresh cookie restores the session on reload. |
 | Multi-tab refresh races | Handled with the reuse grace window (§5) and client single-flight. |
+| No email delivery: invitation links are shown once to the inviter, who shares them | Acceptable for the portfolio scope. An email provider can be added behind `createInvitation` without API changes. |
+| Emails are not verified, so someone who registers with another person's address could accept an invite *if they also obtain the link* | The link is a 256-bit secret delivered by the inviter, and acceptance requires both the token and a matching email. Email verification is a documented follow-up (Phase 7). |
 | Client bundle is ~910 kB minified (~267 kB gzip), mostly Chakra UI | Route-level code splitting and vendor chunking are planned for Phase 7/8. |

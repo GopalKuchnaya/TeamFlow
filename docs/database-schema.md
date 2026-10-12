@@ -58,18 +58,18 @@ Indexes:
 
 ---
 
-## workspaces 📐 (Phase 2)
+## workspaces ✅ (Phase 2)
 
 | Field | Type | Rules |
 | ----- | ---- | ----- |
 | `name` | string | 1–80 chars |
-| `slug` | string | unique, lowercase `[a-z0-9-]`, 3–60 chars, generated from name + random suffix on collision |
-| `description` | string? | ≤ 500 chars |
+| `slug` | string | unique, lowercase `[a-z0-9-]`, ≤ 60 chars: slugified name (≤ 48) + `-` + 6 random hex chars; regenerated on the rare collision (3 attempts) |
+| `description` | string | ≤ 500 chars, default `''` |
 | `ownerId` | ObjectId → users | the current owner (mirrors the owner membership for quick display) |
 
 Indexes: `{ slug: 1 }` unique.
 
-## workspacememberships 📐 (Phase 2)
+## workspacememberships ✅ (Phase 2)
 
 | Field | Type | Rules |
 | ----- | ---- | ----- |
@@ -83,9 +83,12 @@ Indexes:
 - `{ workspaceId: 1, userId: 1 }` **unique**: membership checks on every scoped request;
   prevents duplicate memberships.
 - `{ userId: 1, joinedAt: -1 }`: "my workspaces" listing.
-- `{ workspaceId: 1, role: 1 }`: owner/admin lookups and member list filtering.
+- `{ workspaceId: 1, joinedAt: 1 }`: member list sorted by join date (paginated).
+- `{ workspaceId: 1, role: 1, joinedAt: 1 }`: member list filtered by role.
 
-## invitations 📐 (Phase 2)
+`joinedAt` is the only timestamp (no `createdAt`/`updatedAt`).
+
+## invitations ✅ (Phase 2)
 
 | Field | Type | Rules |
 | ----- | ---- | ----- |
@@ -96,17 +99,26 @@ Indexes:
 | `invitedBy` | ObjectId → users | |
 | `expiresAt` | Date | default 7 days |
 | `acceptedAt` | Date? | |
-| `revokedAt` | Date? | |
+| `acceptedBy` | ObjectId → users? | the account that accepted |
+| `revokedAt` | Date? | set on explicit revoke, or when the same email is re-invited |
 | `createdAt` | Date | |
 
-Indexes: `{ tokenHash: 1 }` unique; `{ workspaceId: 1, email: 1, acceptedAt: 1 }` (pending
-invitations per workspace and duplicate-invite checks); TTL on `expiresAt` with a 30-day
-offset for cleanup.
+Indexes:
 
-Acceptance is a single conditional update
-(`findOneAndUpdate({ tokenHash, acceptedAt: null, revokedAt: null, expiresAt: { $gt: now } })`).
-Combined with the membership unique index, this makes acceptance idempotent and
-race-safe. The accepting user's email must match the invitation email.
+- `{ tokenHash: 1 }` **unique**: preview and accept lookups.
+- `{ workspaceId: 1, email: 1, acceptedAt: 1, revokedAt: 1 }`: revoking a previous pending
+  invite when the same email is re-invited.
+- `{ workspaceId: 1, createdAt: -1 }`: pending-invitation list, newest first.
+- `{ expiresAt: 1 }` **TTL** with `expireAfterSeconds` = 30 days: cleanup. Expiry itself is
+  enforced in queries (`expiresAt > now`), not by TTL timing.
+
+Acceptance checks, in order: the token exists and is not revoked (`404`), it is not accepted
+(`409`), it has not expired (`410`), the email matches the signed-in account (`403`), and the
+user is not already a member (`409`). The invitation is then claimed with a single
+conditional update
+(`findOneAndUpdate({ _id, acceptedAt: null, revokedAt: null, expiresAt: { $gt: now } })`), so
+concurrent requests cannot both succeed. If the membership insert then fails, the claim is
+released.
 
 ## projects 📐 (Phase 3)
 

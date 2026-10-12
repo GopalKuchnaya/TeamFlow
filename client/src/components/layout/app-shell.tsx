@@ -5,6 +5,7 @@ import { Outlet } from 'react-router';
 import { Logo } from '@/components/logo';
 import { SidebarNav } from './sidebar-nav';
 import { UserMenu } from './user-menu';
+import { WorkspaceSwitcher } from './workspace-switcher';
 
 const SIDEBAR_WIDTH = '64';
 
@@ -48,6 +49,7 @@ export function AppShell() {
         <Box px="2">
           <Logo />
         </Box>
+        <WorkspaceSwitcher />
         <SidebarNav />
       </Box>
 
@@ -98,7 +100,8 @@ export function AppShell() {
                   <Logo />
                 </Drawer.Title>
               </Drawer.Header>
-              <Drawer.Body>
+              <Drawer.Body display="flex" flexDirection="column" gap="5">
+                <WorkspaceSwitcher onNavigate={() => { setMobileNavOpen(false); }} />
                 <SidebarNav onNavigate={() => { setMobileNavOpen(false); }} />
               </Drawer.Body>
               <Drawer.CloseTrigger asChild>

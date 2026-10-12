@@ -45,13 +45,25 @@ In scope:
 Out of scope: profile editing and password change (Phase 7 hardening or later), workspaces,
 and everything after.
 
-## Phase 2 — Workspaces & memberships
+## Phase 2 — Workspaces & memberships ✅
 
-Depends on Phase 1 auth. Adds the workspace, membership, and invitation models; a
-`loadMembership` middleware/policy; the permission matrix (architecture §6); workspace
-switcher in the shell; members and invitations page; invitation acceptance page
-(`/invite/:token`). Tests cover every row of the permission matrix and cross-workspace
-access.
+Depends on Phase 1 auth. Delivered:
+
+- Workspace, membership, and invitation models with access-pattern indexes.
+- The permission matrix as a pure policy module, enforced by a service-layer `authorize()`
+  check. (This replaces the originally sketched `loadMembership` middleware, so the same
+  check can be reused by Socket.io in Phase 4.)
+- Workspace CRUD, ownership transfer, member listing (paginated, role filter), role changes,
+  removal and leaving, invitation create/list/revoke, public preview, and accept.
+- An optional-transaction helper with documented fallback ordering.
+- Client: workspace selection and creation, last-used workspace redirect, workspace switcher,
+  overview, members and invitations page, settings (edit, transfer, delete, leave), and the
+  `/invite/:token` acceptance flow for signed-out and signed-in users.
+- Tests: every matrix row, cross-workspace isolation, invitation expiry, single use,
+  concurrency, email mismatch, and replica-set transactions.
+
+Out of scope: email delivery of invitations (the link is shown to the inviter), and email
+verification.
 
 ## Phase 3 — Projects & Kanban tasks
 

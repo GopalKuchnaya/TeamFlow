@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { AppError } from '../../utils/app-error.js';
+import { requireUser } from '../../utils/request.js';
 import { parseInput } from '../../utils/validation.js';
 import { clearRefreshCookie, readRefreshCookie, setRefreshCookie } from './auth.cookies.js';
 import { loginSchema, registerSchema } from './auth.schemas.js';
@@ -49,6 +50,5 @@ export async function logout(req: Request, res: Response): Promise<void> {
 }
 
 export async function me(req: Request, res: Response): Promise<void> {
-  if (!req.user) throw AppError.unauthenticated();
-  res.json({ user: await authService.getCurrentUser(req.user.id) });
+  res.json({ user: await authService.getCurrentUser(requireUser(req).id) });
 }

@@ -1,7 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { safeRedirectTarget } from '@/routes/guards';
-import { mockApi, noSession, sessionBody } from '@/test/mock-api';
+import { mockApi, noSession, page, sessionBody } from '@/test/mock-api';
 import { renderApp } from '@/test/render';
 
 describe('route guards', () => {
@@ -13,9 +13,12 @@ describe('route guards', () => {
   });
 
   it('restores the session from the refresh cookie on load (reload keeps you signed in)', async () => {
-    const { calls } = mockApi({ 'POST /auth/refresh': { status: 200, body: sessionBody } });
+    const { calls } = mockApi({
+      'POST /auth/refresh': { status: 200, body: sessionBody },
+      'GET /workspaces': { status: 200, body: page([]) },
+    });
     renderApp('/');
-    expect(await screen.findByRole('heading', { name: 'Welcome, Ada' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Workspaces' })).toBeInTheDocument();
     const refresh = calls.find((call) => call.path === '/auth/refresh');
     expect(refresh?.headers['x-requested-with']).toBe('teamflow');
   });
@@ -24,8 +27,9 @@ describe('route guards', () => {
     const { calls } = mockApi({
       'POST /auth/refresh': { status: 200, body: sessionBody },
       'POST /auth/logout': { status: 204 },
+      'GET /workspaces': { status: 200, body: page([]) },
     });
-    const { user, router } = renderApp('/');
+    const { user, router } = renderApp('/account');
 
     await user.click(await screen.findByRole('button', { name: /account menu/i }));
     await user.click(await screen.findByRole('menuitem', { name: 'Sign out' }));

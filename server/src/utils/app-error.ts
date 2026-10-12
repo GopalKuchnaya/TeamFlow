@@ -12,6 +12,11 @@ export type ErrorCode =
   | 'EMAIL_TAKEN'
   | 'CONFLICT'
   | 'RATE_LIMITED'
+  | 'ALREADY_MEMBER'
+  | 'INVITATION_NOT_FOUND'
+  | 'INVITATION_EXPIRED'
+  | 'INVITATION_ALREADY_USED'
+  | 'INVITATION_EMAIL_MISMATCH'
   | 'INTERNAL_ERROR';
 
 export interface FieldIssue {

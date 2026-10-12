@@ -4,8 +4,8 @@ A production-style project management SaaS for teams: workspaces, Kanban project
 real-time collaboration, and notifications. It is built with the MERN stack in strict
 TypeScript.
 
-> **Status: Phase 1 (foundation and authentication) complete.** Workspaces, projects,
-> tasks, realtime updates, and notifications are planned. See
+> **Status: Phases 1–2 complete** (foundation, authentication, workspaces, memberships, and
+> invitations). Projects, tasks, realtime updates, and notifications are planned. See
 > [`docs/implementation-roadmap.md`](docs/implementation-roadmap.md).
 
 ## Tech stack
@@ -30,6 +30,15 @@ TypeScript.
 - Protected client routing, an authenticated app shell with a desktop sidebar and mobile
   drawer, login/registration with field-level server errors, an account page, and 404 and
   error pages.
+- **Workspaces:** create, switch (the last-used workspace is remembered), rename, delete,
+  and transfer ownership.
+- **Members:** paginated member list with a role filter; the owner changes roles; owners
+  and admins remove members per the permission matrix; non-owners can leave.
+- **Invitations:** owners and admins create single-use invite links that expire in 7 days
+  (shown once, stored hashed), list and revoke pending ones, and invitees accept via
+  `/invite/:token`, signed in or after signing up.
+- **Role-based access control** enforced in the API service layer. Non-members get `404`
+  for every workspace resource.
 
 ## Repository layout
 

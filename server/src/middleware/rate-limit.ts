@@ -53,3 +53,18 @@ export function createAuthRateLimiters(enabled: boolean) {
 }
 
 export type AuthRateLimiters = ReturnType<typeof createAuthRateLimiters>;
+
+/** Per-IP limits for the public invitation endpoints, plus a per-user cap on sending invites. */
+export function createInvitationRateLimiters(enabled: boolean) {
+  return {
+    redeem: createLimiter({ windowMs: FIFTEEN_MINUTES, limit: 30, enabled }),
+    send: createLimiter({
+      windowMs: ONE_HOUR,
+      limit: 50,
+      enabled,
+      keyGenerator: (req) => req.user?.id ?? clientIp(req),
+    }),
+  };
+}
+
+export type InvitationRateLimiters = ReturnType<typeof createInvitationRateLimiters>;

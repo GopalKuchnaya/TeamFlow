@@ -7,10 +7,12 @@ import { pinoHttp } from 'pino-http';
 import { getEnv } from './config/env.js';
 import { getLogger } from './config/logger.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
-import { createAuthRateLimiters } from './middleware/rate-limit.js';
+import { createAuthRateLimiters, createInvitationRateLimiters } from './middleware/rate-limit.js';
 import { CSRF_HEADER } from './middleware/require-csrf-header.js';
 import { createAuthRouter } from './modules/auth/auth.routes.js';
 import { createHealthRouter } from './modules/health/health.routes.js';
+import { createInvitationRouter } from './modules/invitations/invitation.routes.js';
+import { createWorkspaceRouter } from './modules/workspaces/workspace.routes.js';
 
 export const API_PREFIX = '/api/v1';
 const REQUEST_ID_HEADER = 'x-request-id';
@@ -59,6 +61,9 @@ export function createApp(): Express {
   const authLimiters = createAuthRateLimiters(env.RATE_LIMIT_ENABLED);
   app.use(`${API_PREFIX}/health`, createHealthRouter());
   app.use(`${API_PREFIX}/auth`, createAuthRouter(authLimiters));
+  const invitationLimiters = createInvitationRateLimiters(env.RATE_LIMIT_ENABLED);
+  app.use(`${API_PREFIX}/workspaces`, createWorkspaceRouter(invitationLimiters));
+  app.use(`${API_PREFIX}/invitations`, createInvitationRouter(invitationLimiters));
 
   app.use(notFoundHandler);
   app.use(errorHandler);

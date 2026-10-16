@@ -1,0 +1,34 @@
+# Render Blueprint: one Node web service that serves both the API and the built React app.
+# Create it in Render → New → Blueprint, pick this repository and branch, then paste the
+# MongoDB Atlas connection string when prompted. See docs/deployment.md.
+services:
+  - type: web
+    name: teamflow
+    runtime: node
+    plan: free
+    region: oregon
+    # Deploy each push only after the GitHub Actions CI checks pass.
+    autoDeployTrigger: checksPass
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm run start -w server
+    healthCheckPath: /api/v1/health/ready
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      # Skip downloading a test-only MongoDB binary during install.
+      - key: MONGOMS_DISABLE_POSTINSTALL
+        value: "1"
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      # Relative to the server workspace, where the start command runs.
+      - key: CLIENT_DIST_DIR
+        value: ../client/dist
+      # Render terminates TLS at one proxy hop; needed for correct client IPs in rate limits.
+      - key: TRUST_PROXY
+        value: "1"
+      - key: LOG_LEVEL
+        value: info

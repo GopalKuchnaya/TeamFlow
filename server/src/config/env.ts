@@ -35,6 +35,8 @@ const envSchema = z
     COOKIE_SAMESITE: z.enum(['lax', 'strict', 'none']).default('lax'),
     COOKIE_DOMAIN: z.string().min(1).optional(),
     RATE_LIMIT_ENABLED: booleanString.default(true),
+    // When set, the API also serves the built SPA (single-origin deployment).
+    CLIENT_DIST_DIR: z.string().min(1).optional(),
   })
   .transform((env) => ({
     ...env,

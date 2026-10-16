@@ -13,6 +13,7 @@ import { createAuthRouter } from './modules/auth/auth.routes.js';
 import { createHealthRouter } from './modules/health/health.routes.js';
 import { createInvitationRouter } from './modules/invitations/invitation.routes.js';
 import { createWorkspaceRouter } from './modules/workspaces/workspace.routes.js';
+import { serveClient } from './static-client.js';
 
 export const API_PREFIX = '/api/v1';
 const REQUEST_ID_HEADER = 'x-request-id';
@@ -64,6 +65,8 @@ export function createApp(): Express {
   const invitationLimiters = createInvitationRateLimiters(env.RATE_LIMIT_ENABLED);
   app.use(`${API_PREFIX}/workspaces`, createWorkspaceRouter(invitationLimiters));
   app.use(`${API_PREFIX}/invitations`, createInvitationRouter(invitationLimiters));
+
+  if (env.CLIENT_DIST_DIR) serveClient(app, env.CLIENT_DIST_DIR);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

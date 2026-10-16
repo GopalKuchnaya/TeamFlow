@@ -109,9 +109,17 @@ at start-up (the process exits with a list of invalid variable names, never thei
 The client only reads `VITE_API_URL`. Everything prefixed `VITE_` is public, so never put
 secrets there.
 
+## Deployment
+
+TeamFlow deploys as a single Node service (API + built SPA on one origin) on Render, backed
+by MongoDB Atlas. Both have free tiers. `render.yaml` and the GitHub Actions CI workflow are
+included, and pushes deploy automatically once CI passes. Step-by-step guide:
+[`docs/deployment.md`](docs/deployment.md).
+
 ## Documentation
 
 - [Architecture, decisions, auth design, and permission matrix](docs/architecture.md)
 - [Database schema and indexes](docs/database-schema.md)
 - [API reference](docs/api.md)
 - [Implementation roadmap](docs/implementation-roadmap.md)
+- [Deployment guide](docs/deployment.md)
